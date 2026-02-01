@@ -32,11 +32,11 @@ const PublicBookingPage = () => {
     if (bookingData.startTime && bookingData.endTime && selectedField) {
       const start = parseTime(bookingData.startTime);
       const end = parseTime(bookingData.endTime);
-      
+
       if (end > start) {
         const duration = (end - start) / 60;
         const totalPrice = duration * selectedField.pricePerHour;
-        
+
         setBookingData(prev => ({
           ...prev,
           duration,
@@ -51,7 +51,7 @@ const PublicBookingPage = () => {
       setLoading(true);
       const response = await fetch(`${API_URL}/fields`);
       const data = await response.json();
-      
+
       if (data.success) {
         setFields(data.data);
       }
@@ -81,7 +81,7 @@ const PublicBookingPage = () => {
       if (data.success) {
         setFields(data.data.availableFields);
         setFilterApplied(true);
-        
+
         if (data.data.availableFields.length === 0) {
           setError('Không có sân trống vào thời gian này. Vui lòng chọn thời gian khác.');
         }
@@ -130,6 +130,12 @@ const PublicBookingPage = () => {
   };
 
   const handleFieldSelect = (field) => {
+    // ⭐ ADD THIS - Check if field is active
+    if (!field.isActive) {
+      setError(`Sân "${field.name}" hiện không hoạt động. Vui lòng chọn sân khác.`);
+      alert(`⚠️ Sân "${field.name}" hiện không hoạt động`);
+      return;
+    }
     setSelectedField(field);
     setStep(2);
   };
@@ -176,7 +182,7 @@ const PublicBookingPage = () => {
       });
 
       const customerData = await customerResponse.json();
-      
+
       if (!customerResponse.ok) {
         throw new Error(customerData.message || 'Không thể xử lý thông tin');
       }
@@ -260,9 +266,8 @@ const PublicBookingPage = () => {
               return (
                 <React.Fragment key={s.num}>
                   <div className="flex flex-col items-center">
-                    <div className={`w-14 h-14 rounded-full flex items-center justify-center font-bold transition ${
-                      step >= s.num ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg' : 'bg-slate-200 text-slate-600'
-                    }`}>
+                    <div className={`w-14 h-14 rounded-full flex items-center justify-center font-bold transition ${step >= s.num ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg' : 'bg-slate-200 text-slate-600'
+                      }`}>
                       <Icon className="w-6 h-6" />
                     </div>
                     <span className={`text-sm mt-2 font-medium ${step >= s.num ? 'text-purple-600' : 'text-slate-400'}`}>
@@ -270,9 +275,8 @@ const PublicBookingPage = () => {
                     </span>
                   </div>
                   {idx < 3 && (
-                    <div className={`flex-1 h-1 mx-4 rounded transition ${
-                      step > s.num ? 'bg-gradient-to-r from-purple-500 to-pink-500' : 'bg-slate-200'
-                    }`} />
+                    <div className={`flex-1 h-1 mx-4 rounded transition ${step > s.num ? 'bg-gradient-to-r from-purple-500 to-pink-500' : 'bg-slate-200'
+                      }`} />
                   )}
                 </React.Fragment>
               );
@@ -350,7 +354,7 @@ const PublicBookingPage = () => {
                 >
                   {loading ? 'Đang tìm...' : '🔍 Tìm sân trống'}
                 </button>
-                
+
                 {(bookingData.bookingDate || bookingData.startTime || bookingData.endTime) && (
                   <button
                     onClick={handleClearFilter}
@@ -397,18 +401,31 @@ const PublicBookingPage = () => {
                 <div
                   key={field.id}
                   onClick={() => handleFieldSelect(field)}
-                  className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-2xl transition cursor-pointer group border-2 border-transparent hover:border-purple-500"
+                  className={`bg-white rounded-2xl p-6 shadow-lg hover:shadow-2xl transition cursor-pointer group border-2 ${field.isActive
+                      ? 'border-transparent hover:border-purple-500'
+                      : 'border-red-300 opacity-60 cursor-not-allowed'
+                    }`}
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div>
-                      <h3 className="text-xl font-bold text-slate-900 group-hover:text-purple-600 transition">
-                        {field.name}
-                      </h3>
-                      <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold mt-2 bg-green-100 text-green-700">
+                      <div className="flex items-center gap-2">
+                        <h3 className={`text-xl font-bold ${field.isActive ? 'text-slate-900 group-hover:text-purple-600' : 'text-gray-500'
+                          } transition`}>
+                          {field.name}
+                        </h3>
+                        {!field.isActive && (
+                          <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-semibold rounded-full">
+                            Ngừng hoạt động
+                          </span>
+                        )}
+                      </div>
+                      <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold mt-2 ${field.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                        }`}>
                         {field.fieldType}
                       </span>
                     </div>
-                    <ChevronRight className="w-6 h-6 text-slate-400 group-hover:text-purple-600 transition" />
+                    <ChevronRight className={`w-6 h-6 transition ${field.isActive ? 'text-slate-400 group-hover:text-purple-600' : 'text-gray-300'
+                      }`} />
                   </div>
 
                   <div className="flex items-start gap-2 text-slate-600 mb-4">
@@ -424,11 +441,11 @@ const PublicBookingPage = () => {
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-slate-500">Giá thuê:</span>
                       <div className="text-right">
-                        <span className="text-2xl font-bold text-purple-600">
+                        <span className={`text-2xl font-bold ${field.isActive ? 'text-purple-600' : 'text-gray-400'}`}>
                           {formatCurrency(field.pricePerHour)}
                           <span className="text-sm font-normal text-slate-500">/giờ</span>
                         </span>
-                        {filterApplied && field.estimatedPrice && (
+                        {filterApplied && field.estimatedPrice && field.isActive && (
                           <p className="text-sm text-green-600 font-semibold mt-1">
                             ≈ {formatCurrency(field.estimatedPrice)}
                           </p>
@@ -436,6 +453,14 @@ const PublicBookingPage = () => {
                       </div>
                     </div>
                   </div>
+
+                  {!field.isActive && (
+                    <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-sm text-red-700 font-medium">
+                        ⚠️ Sân này hiện không nhận đặt
+                      </p>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -649,7 +674,7 @@ const PublicBookingPage = () => {
 
             <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-8 mb-8 text-left">
               <h3 className="text-xl font-bold text-slate-900 mb-6">Chi tiết đặt sân:</h3>
-              
+
               <div className="space-y-4">
                 <div className="flex justify-between py-3 border-b border-purple-200">
                   <span className="text-slate-600">Sân:</span>
